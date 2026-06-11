@@ -1,0 +1,55 @@
+# FastAPI and Web
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+websockets==14.1
+python-multipart==0.0.20
+pydantic==2.10.5
+pydantic-settings==2.7.1
+
+# Google Cloud and Gemini
+# langchain-google-genai pulls in google-ai-generativelanguage at the right version.
+# Direct Gemini calls use ChatGoogleGenerativeAI from langchain-google-genai.
+langchain-google-genai==2.0.11
+google-cloud-aiplatform==1.79.0
+google-auth==2.38.0
+
+# LangChain and LangGraph
+langgraph==0.2.73
+langchain==0.3.18
+langchain-mongodb==0.3.0
+langchain-community==0.3.17
+
+# MongoDB
+motor==3.7.0
+pymongo[srv]==4.11.1
+
+# Redis and Celery
+redis==5.2.1
+celery==5.5.0
+flower==2.0.1
+
+# Document Processing
+beautifulsoup4==4.12.3
+lxml==5.3.1
+requests==2.32.3
+aiohttp==3.11.12
+markdownify==0.14.1
+pypdf==5.3.0
+python-docx==1.1.2
+
+# Embedding and Vector Search
+sentence-transformers==3.4.1
+numpy==1.26.4
+
+# Utilities
+python-dotenv==1.0.1
+tenacity==9.0.0
+httpx==0.28.1
+pyyaml==6.0.2
+
+# Development
+pytest==8.3.5
+pytest-asyncio==0.25.3
+black==25.1.0
+flake8==7.2.0
+mypy==1.14.1

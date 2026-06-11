@@ -1,0 +1,43 @@
+# Google Cloud Build configuration for Cloud Run deployment
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/voicedoc-intelligence:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/voicedoc-intelligence:latest',
+      '.'
+    ]
+
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/voicedoc-intelligence:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/voicedoc-intelligence:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'voicedoc-intelligence',
+      '--image', 'gcr.io/$PROJECT_ID/voicedoc-intelligence:$COMMIT_SHA',
+      '--region', 'us-central1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--memory', '2Gi',
+      '--cpu', '2',
+      '--timeout', '300',
+      '--concurrency', '80',
+      '--min-instances', '0',
+      '--max-instances', '10'
+    ]
+
+images:
+  - 'gcr.io/$PROJECT_ID/voicedoc-intelligence:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/voicedoc-intelligence:latest'
+
+options:
+  machineType: 'N1_HIGHCPU_8'
+  timeout: '1200s'

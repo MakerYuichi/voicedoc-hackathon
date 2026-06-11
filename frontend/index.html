@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceDoc Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-3xl font-bold">🎤 VoiceDoc Intelligence</h1>
+            <p class="text-blue-100 mt-2">Voice-Commanded Document Intelligence System</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Voice Input Section -->
+        <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Voice Command</h2>
+            <div class="flex items-center gap-4">
+                <button id="voiceBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all">
+                    <i class="fas fa-microphone mr-2"></i>
+                    Start Speaking
+                </button>
+                <div id="voiceStatus" class="text-gray-600"></div>
+            </div>
+            <div id="transcript" class="mt-4 p-4 bg-gray-50 rounded-lg min-h-[100px] text-gray-700"></div>
+        </section>
+
+        <!-- Progress Section -->
+        <section id="progressSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold mb-4">Processing Status</h2>
+            <div id="progressContainer"></div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="resultsSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold mb-4">Documents Processed</h2>
+            <div id="resultsContainer"></div>
+        </section>
+
+        <!-- Query Section -->
+        <section id="querySection" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-2xl font-bold mb-4">Ask Questions</h2>
+            <div class="flex gap-4">
+                <input 
+                    type="text" 
+                    id="queryInput" 
+                    placeholder="Ask a question about your documents..." 
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <button id="queryBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold">
+                    Ask
+                </button>
+            </div>
+            <div id="queryResults" class="mt-4"></div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-4 mt-12">
+        <p>Google Cloud Rapid Agent Hackathon Project</p>
+        <p class="text-gray-400 text-sm mt-1">Powered by Gemini 2.0 Flash + LangGraph + MongoDB</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

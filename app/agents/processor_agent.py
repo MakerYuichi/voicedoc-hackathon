@@ -82,12 +82,11 @@ def _now() -> datetime:
 
 
 def _run_async(coro):
-    """Run async coroutine from a sync Celery worker thread."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    """Run async coroutine from a sync Celery worker thread.
+    Uses run_async_with_db to ensure Motor is connected on the fresh event loop.
+    """
+    from app.utils.worker_db import run_async_with_db
+    return run_async_with_db(coro)
 
 
 # ── chunking ───────────────────────────────────────────────────────

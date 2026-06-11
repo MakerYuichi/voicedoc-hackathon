@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional
 from app.database.db import db_manager
 from app.models.job_status import JobState, JobStatusCreate
 from app.utils.websocket_manager import ws_manager
+from app.utils.worker_db import call_async, ensure_worker_db
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +39,12 @@ def _now() -> datetime:
 def _run_sync(coro):
     """
     Run an async coroutine from a sync (Celery worker) context.
-    Creates a new event loop in the calling thread.
+
+    Uses the worker's persistent event loop via call_async().
+    The task must have called ensure_worker_db() first — which all
+    agent tasks do at the start of their task body.
     """
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    return call_async(coro)
 
 
 # ── create ─────────────────────────────────────────────────────────

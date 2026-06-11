@@ -218,9 +218,9 @@ def _save_documents_to_mongo(
     Upsert each URL as a document record in MongoDB.
     Uses update_one with upsert=True to avoid duplicates.
     """
-    import asyncio
     from app.database.db import db_manager
     from app.models.documents import DocumentStatus
+    from app.utils.worker_db import run_async_with_db
 
     async def _upsert_all():
         for c in candidates:
@@ -250,11 +250,8 @@ def _save_documents_to_mongo(
                 upsert=True,
             )
 
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(_upsert_all())
-    finally:
-        loop.close()
+    from app.utils.worker_db import run_async_with_db
+    run_async_with_db(_upsert_all())
 
 
 # ── Main Celery task ───────────────────────────────────────────────

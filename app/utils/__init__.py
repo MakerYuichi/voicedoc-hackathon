@@ -16,6 +16,7 @@ from app.utils.job_manager import (
     redis_health_check,
 )
 from app.utils.llm import get_llm, get_llm_sync, active_provider, llm_health_check
+from app.utils.worker_db import run_async_with_db
 
 __all__ = [
     "ws_manager",
@@ -35,4 +36,5 @@ __all__ = [
     "get_llm_sync",
     "active_provider",
     "llm_health_check",
+    "run_async_with_db",
 ]

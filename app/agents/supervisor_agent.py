@@ -32,7 +32,6 @@ from typing import Any, Dict, List, Optional, TypedDict
 
 from celery import chain
 from langchain_core.messages import HumanMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 
 from app.agents.evaluator_agent import evaluator_task
@@ -45,6 +44,7 @@ from app.utils.job_manager import (
     create_agent_job,
     create_job,
 )
+from app.utils.llm import get_llm
 
 logger = logging.getLogger(__name__)
 
@@ -77,16 +77,11 @@ class SupervisorState(TypedDict):
     dispatched_at: Optional[str]
 
 
-# ── Gemini client factory ──────────────────────────────────────────
+# ── LLM client factory ────────────────────────────────────────────
 
-def _get_gemini_model() -> ChatGoogleGenerativeAI:
-    """Return a LangChain ChatGoogleGenerativeAI instance."""
-    return ChatGoogleGenerativeAI(
-        model=settings.gemini_model,
-        google_api_key=settings.google_api_key,
-        temperature=settings.temperature,
-        max_output_tokens=settings.max_tokens,
-    )
+def _get_llm():
+    """Return the configured LLM (Gemini or Groq fallback)."""
+    return get_llm(temperature=settings.temperature, max_tokens=settings.max_tokens)
 
 
 # ── Node implementations ───────────────────────────────────────────
@@ -123,7 +118,7 @@ async def node_plan_tasks(state: SupervisorState) -> SupervisorState:
     prompt = _build_planning_prompt(state["query"])
 
     try:
-        model = _get_gemini_model()
+        model = _get_llm()
         response = await model.ainvoke([HumanMessage(content=prompt)])
         raw = response.content.strip()
         plan = _parse_json_response(raw)

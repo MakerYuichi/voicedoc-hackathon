@@ -11,5 +11,6 @@ ProcessorAgent   — Celery task, chunks + embeds + stores   (Step 8)
 QueryAgent       — standalone RAG agent                    (Step 9)
 """
 from app.agents.supervisor_agent import SupervisorAgent, supervisor_agent
+from app.agents.query_agent import QueryAgent, query_agent
 
-__all__ = ["SupervisorAgent", "supervisor_agent"]
+__all__ = ["SupervisorAgent", "supervisor_agent", "QueryAgent", "query_agent"]

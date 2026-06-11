@@ -1,5 +1,5 @@
 """
-FastAPI application entry point
+VoiceDoc Intelligence — FastAPI application entry point.
 """
 from contextlib import asynccontextmanager
 import logging
@@ -11,8 +11,9 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database.db import db_manager
 from app.utils.job_manager import redis_health_check
+from app.utils.llm import llm_health_check, active_provider
 
-# Configure logging
+# Configure logging before anything else
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -20,37 +21,52 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ── lifespan ───────────────────────────────────────────────────────
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup / shutdown lifecycle."""
+    """Connect / disconnect all external resources on startup / shutdown."""
     logger.info("🚀 Starting VoiceDoc Intelligence...")
-    logger.info(f"Environment : {settings.app_env}")
-    logger.info(f"Gemini Model: {settings.gemini_model}")
+    logger.info(f"  env         : {settings.app_env}")
+    logger.info(f"  LLM         : {active_provider()} ({settings.gemini_model})")
+    logger.info(f"  embeddings  : {settings.embedding_model}")
 
-    # ── startup ────────────────────────────────────────────────────
+    # MongoDB
     await db_manager.connect()
 
+    # Redis (warn-only — app still starts if Redis is down)
     redis_status = await redis_health_check()
     if redis_status.get("redis") == "healthy":
         logger.info("✅ Redis connected")
     else:
-        logger.warning(f"⚠️  Redis unavailable: {redis_status.get('error')} — Celery workers won't start")
+        logger.warning(
+            f"⚠️  Redis unavailable: {redis_status.get('error')} "
+            "— Celery workers won't process tasks until Redis is reachable"
+        )
 
     yield
 
-    # ── shutdown ───────────────────────────────────────────────────
     await db_manager.disconnect()
     logger.info("🛑 VoiceDoc Intelligence stopped.")
 
 
 # ── app factory ────────────────────────────────────────────────────
+
 app = FastAPI(
     title="VoiceDoc Intelligence",
-    description="Voice-Commanded Document Intelligence Multi-Agent System",
+    description=(
+        "Voice-Commanded Document Intelligence Multi-Agent System.\n\n"
+        "**Hackathon**: Google Cloud Rapid Agent Hackathon\n"
+        "**LLM**: Gemini 2.0 Flash · **Orchestration**: LangGraph · "
+        "**Storage**: MongoDB Atlas"
+    ),
     version="0.1.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
+# CORS — allow the frontend dev server and the API itself
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -60,47 +76,74 @@ app.add_middleware(
 )
 
 
-# ── routes ─────────────────────────────────────────────────────────
+# ── routers ────────────────────────────────────────────────────────
+
+from app.api import process_router, query_router, websocket_router  # noqa: E402
+
+app.include_router(process_router)
+app.include_router(query_router)
+app.include_router(websocket_router)
+
+
+# ── meta routes ────────────────────────────────────────────────────
 
 @app.get("/", tags=["meta"])
 async def root():
+    """API root — confirms the service is running."""
     return {
-        "message": "VoiceDoc Intelligence API",
+        "service": "VoiceDoc Intelligence",
         "version": "0.1.0",
-        "status": "operational",
-        "docs": "/docs",
+        "status":  "operational",
+        "docs":    "/docs",
+        "endpoints": {
+            "process":   "POST /api/process",
+            "job_status":"GET  /api/job/{job_id}",
+            "query":     "POST /api/query",
+            "websocket": "WS   /ws/{session_id}",
+            "health":    "GET  /api/health",
+        },
     }
 
 
-@app.get("/health", tags=["meta"])
+@app.get("/api/health", tags=["meta"])
 async def health_check():
     """
-    Returns the health of the API and its dependencies.
-    Used by Docker HEALTHCHECK and Cloud Run liveness probes.
+    Dependency health check used by Docker HEALTHCHECK and Cloud Run
+    liveness probes.
+
+    Returns 200 when MongoDB is reachable; 503 otherwise.
+    Redis and LLM failures are reported but do not degrade the HTTP status
+    (they are non-fatal for serving existing data).
     """
-    db_health = await db_manager.health_check()
-    all_healthy = db_health.get("mongodb") == "healthy"
+    db_health    = await db_manager.health_check()
+    redis_health = await redis_health_check()
+    llm_health   = await llm_health_check()
+
+    mongo_ok = db_health.get("mongodb") == "healthy"
+    overall  = "healthy" if mongo_ok else "degraded"
 
     return JSONResponse(
         content={
-            "status": "healthy" if all_healthy else "degraded",
+            "status":      overall,
             "environment": settings.app_env,
-            "model": settings.gemini_model,
             "dependencies": {
                 **db_health,
-                **(await redis_health_check()),
+                **redis_health,
+                **llm_health,
+            },
+            "config": {
+                "llm_provider":   active_provider(),
+                "llm_model":      settings.gemini_model,
+                "embedding_model": settings.embedding_model,
+                "vector_dims":    settings.vector_dimensions,
+                "chunk_size":     settings.document_chunk_size,
             },
         },
-        status_code=200 if all_healthy else 503,
+        status_code=200 if mongo_ok else 503,
     )
 
 
-# TODO Step 10: include API routers
-# from app.api import process, query, websocket
-# app.include_router(process.router)
-# app.include_router(query.router)
-# app.include_router(websocket.router)
-
+# ── dev entry point ────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
@@ -110,4 +153,5 @@ if __name__ == "__main__":
         host=settings.app_host,
         port=settings.app_port,
         reload=settings.app_env == "development",
+        log_level=settings.log_level.lower(),
     )

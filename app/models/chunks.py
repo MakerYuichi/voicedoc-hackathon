@@ -17,7 +17,7 @@ class ChunkBase(BaseModel):
     session_id: str = Field(..., description="Session that created this chunk")
     content: str = Field(..., description="Raw text content of this chunk")
     embedding: List[float] = Field(
-        ..., description="Dense vector embedding (1536-dim for text-embedding-004)"
+        ..., description="Dense vector embedding (3072-dim for gemini-embedding-001)"
     )
     chunk_index: int = Field(..., ge=0, description="0-based position in the parent document")
     token_count: int = Field(default=0, description="Approximate token count")

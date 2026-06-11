@@ -1,72 +1,784 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceDoc Intelligence</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceDoc Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            mongo:     { DEFAULT: '#00ED64', dark: '#00C04F', muted: '#00ED6420' },
+            surface:   { DEFAULT: '#1a1a2e', card: '#16213e', border: '#0f3460' },
+            status:    { idle: '#6b7280', running: '#f59e0b', success: '#00ED64', error: '#ef4444' }
+          },
+          animation: {
+            'pulse-mongo': 'pulse-mongo 1.5s cubic-bezier(0.4,0,0.6,1) infinite',
+            'slide-in':    'slide-in 0.3s ease-out',
+            'fade-in':     'fade-in 0.4s ease-out',
+          },
+          keyframes: {
+            'pulse-mongo': {
+              '0%,100%': { boxShadow: '0 0 0 0 #00ED6440' },
+              '50%':     { boxShadow: '0 0 0 8px #00ED6400' },
+            },
+            'slide-in': {
+              from: { opacity: '0', transform: 'translateY(8px)' },
+              to:   { opacity: '1', transform: 'translateY(0)' },
+            },
+            'fade-in': {
+              from: { opacity: '0' },
+              to:   { opacity: '1' },
+            },
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { background: #0d1117; font-family: 'Inter', system-ui, sans-serif; }
+    .glow-mongo { box-shadow: 0 0 20px #00ED6430; }
+    .glow-mongo-sm { box-shadow: 0 0 8px #00ED6440; }
+    .card { background: #161b22; border: 1px solid #21262d; border-radius: 12px; }
+    .card-active { border-color: #00ED6440; box-shadow: 0 0 12px #00ED6418; }
+    .progress-bar { transition: width 0.5s ease; background: linear-gradient(90deg, #00ED64, #00C04F); }
+    .scrollbar::-webkit-scrollbar { width: 4px; }
+    .scrollbar::-webkit-scrollbar-track { background: #161b22; }
+    .scrollbar::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+    .mic-pulse { animation: mic-ring 1.2s ease-out infinite; }
+    @keyframes mic-ring {
+      0%   { box-shadow: 0 0 0 0 #ef444480; }
+      70%  { box-shadow: 0 0 0 16px #ef444400; }
+      100% { box-shadow: 0 0 0 0 #ef444400; }
+    }
+    .agent-pulse { animation: agent-glow 1s ease-in-out infinite alternate; }
+    @keyframes agent-glow {
+      from { border-color: #00ED6430; }
+      to   { border-color: #00ED6480; }
+    }
+    .chat-bubble-user { background: #1f6feb; border-radius: 16px 16px 4px 16px; }
+    .chat-bubble-ai   { background: #161b22; border: 1px solid #21262d; border-radius: 16px 16px 16px 4px; }
+    .source-chip { background: #00ED6415; border: 1px solid #00ED6430; color: #00ED64; }
+  </style>
 </head>
-<body class="bg-gray-50">
-    <!-- Header -->
-    <header class="bg-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-6">
-            <h1 class="text-3xl font-bold">🎤 VoiceDoc Intelligence</h1>
-            <p class="text-blue-100 mt-2">Voice-Commanded Document Intelligence System</p>
+
+<body class="text-gray-100 min-h-screen">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════════ -->
+<header class="sticky top-0 z-50 border-b border-gray-800" style="background:#0d1117ee; backdrop-filter:blur(12px)">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#00ED6420; border:1px solid #00ED6440">
+        <svg class="w-4 h-4" fill="#00ED64" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-white tracking-tight">VoiceDoc Intelligence</h1>
+        <p class="text-xs text-gray-500">Multi-Agent Document Intelligence System</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div id="ws-status" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium" style="background:#21262d; border:1px solid #30363d">
+        <span id="ws-dot" class="w-2 h-2 rounded-full bg-gray-500"></span>
+        <span id="ws-label" class="text-gray-400">Connecting…</span>
+      </div>
+      <span class="text-xs text-gray-600 hidden sm:block">Gemini 2.0 Flash · LangGraph · MongoDB Atlas</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     VOICE INPUT
+════════════════════════════════════════════════════════════════ -->
+<section class="card p-6">
+  <div class="flex items-center gap-2 mb-4">
+    <div class="w-2 h-2 rounded-full" style="background:#00ED64"></div>
+    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Voice Command</h2>
+  </div>
+
+  <div class="flex flex-col items-center gap-4">
+    <!-- Mic button -->
+    <button id="mic-btn"
+      class="relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 focus:outline-none"
+      style="background:#00ED6415; border:2px solid #00ED6440"
+      title="Click to start recording">
+      <svg id="mic-icon" class="w-8 h-8" fill="#00ED64" viewBox="0 0 24 24">
+        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zm5.3 9.5A5.3 5.3 0 0112 15.7a5.3 5.3 0 01-5.3-5.2H5a7 7 0 006 6.93V20H9v2h6v-2h-2v-2.07A7 7 0 0019 11h-1.7z"/>
+      </svg>
+    </button>
+
+    <p id="mic-hint" class="text-sm text-gray-500">Click to start speaking</p>
+
+    <!-- Transcript box -->
+    <div class="w-full max-w-2xl">
+      <div id="transcript-box"
+        class="w-full min-h-[80px] p-4 rounded-lg text-sm text-gray-300 leading-relaxed"
+        style="background:#0d1117; border:1px solid #21262d">
+        <span id="interim-text" class="text-gray-600 italic"></span>
+        <span id="final-text" class="text-gray-200"></span>
+      </div>
+    </div>
+
+    <!-- Submit row -->
+    <div class="flex gap-3 w-full max-w-2xl">
+      <input id="text-input"
+        type="text"
+        placeholder="Or type a research query here…"
+        class="flex-1 px-4 py-2.5 rounded-lg text-sm text-gray-200 focus:outline-none focus:ring-1"
+        style="background:#161b22; border:1px solid #30363d; --tw-ring-color:#00ED64" />
+      <button id="submit-btn"
+        class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 focus:outline-none"
+        style="background:#00ED64; color:#0d1117">
+        Process
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     AGENT ACTIVITY
+════════════════════════════════════════════════════════════════ -->
+<section class="card p-6">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+      <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Agent Activity</h2>
+    </div>
+    <span id="job-id-label" class="text-xs text-gray-600 font-mono hidden"></span>
+  </div>
+
+  <!-- Agent cards grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3" id="agent-grid">
+    <!-- SupervisorAgent -->
+    <div id="agent-SupervisorAgent" class="agent-card rounded-xl p-4 transition-all duration-300" style="background:#161b22; border:1px solid #21262d">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🧠</span>
+          <div>
+            <p class="text-xs font-semibold text-gray-200">Supervisor</p>
+            <p class="text-xs text-gray-600">LangGraph</p>
+          </div>
         </div>
-    </header>
+        <span class="agent-status-badge text-xs px-2 py-0.5 rounded-full" style="background:#6b728020; color:#6b7280">idle</span>
+      </div>
+      <div class="w-full h-1.5 rounded-full mb-2" style="background:#21262d">
+        <div class="agent-progress-bar h-full rounded-full progress-bar" style="width:0%"></div>
+      </div>
+      <p class="agent-action text-xs text-gray-600 truncate">Waiting for query</p>
+    </div>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <!-- Voice Input Section -->
-        <section class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-2xl font-bold mb-4">Voice Command</h2>
-            <div class="flex items-center gap-4">
-                <button id="voiceBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all">
-                    <i class="fas fa-microphone mr-2"></i>
-                    Start Speaking
-                </button>
-                <div id="voiceStatus" class="text-gray-600"></div>
-            </div>
-            <div id="transcript" class="mt-4 p-4 bg-gray-50 rounded-lg min-h-[100px] text-gray-700"></div>
-        </section>
+    <!-- ScannerAgent -->
+    <div id="agent-ScannerAgent" class="agent-card rounded-xl p-4 transition-all duration-300" style="background:#161b22; border:1px solid #21262d">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🔍</span>
+          <div>
+            <p class="text-xs font-semibold text-gray-200">Scanner</p>
+            <p class="text-xs text-gray-600">DuckDuckGo</p>
+          </div>
+        </div>
+        <span class="agent-status-badge text-xs px-2 py-0.5 rounded-full" style="background:#6b728020; color:#6b7280">idle</span>
+      </div>
+      <div class="w-full h-1.5 rounded-full mb-2" style="background:#21262d">
+        <div class="agent-progress-bar h-full rounded-full progress-bar" style="width:0%"></div>
+      </div>
+      <p class="agent-action text-xs text-gray-600 truncate">Waiting</p>
+    </div>
 
-        <!-- Progress Section -->
-        <section id="progressSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
-            <h2 class="text-2xl font-bold mb-4">Processing Status</h2>
-            <div id="progressContainer"></div>
-        </section>
+    <!-- EvaluatorAgent -->
+    <div id="agent-EvaluatorAgent" class="agent-card rounded-xl p-4 transition-all duration-300" style="background:#161b22; border:1px solid #21262d">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚖️</span>
+          <div>
+            <p class="text-xs font-semibold text-gray-200">Evaluator</p>
+            <p class="text-xs text-gray-600">Gemini scorer</p>
+          </div>
+        </div>
+        <span class="agent-status-badge text-xs px-2 py-0.5 rounded-full" style="background:#6b728020; color:#6b7280">idle</span>
+      </div>
+      <div class="w-full h-1.5 rounded-full mb-2" style="background:#21262d">
+        <div class="agent-progress-bar h-full rounded-full progress-bar" style="width:0%"></div>
+      </div>
+      <p class="agent-action text-xs text-gray-600 truncate">Waiting</p>
+    </div>
 
-        <!-- Results Section -->
-        <section id="resultsSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
-            <h2 class="text-2xl font-bold mb-4">Documents Processed</h2>
-            <div id="resultsContainer"></div>
-        </section>
+    <!-- ExtractorAgent -->
+    <div id="agent-ExtractorAgent" class="agent-card rounded-xl p-4 transition-all duration-300" style="background:#161b22; border:1px solid #21262d">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">📄</span>
+          <div>
+            <p class="text-xs font-semibold text-gray-200">Extractor</p>
+            <p class="text-xs text-gray-600">trafilatura</p>
+          </div>
+        </div>
+        <span class="agent-status-badge text-xs px-2 py-0.5 rounded-full" style="background:#6b728020; color:#6b7280">idle</span>
+      </div>
+      <div class="w-full h-1.5 rounded-full mb-2" style="background:#21262d">
+        <div class="agent-progress-bar h-full rounded-full progress-bar" style="width:0%"></div>
+      </div>
+      <p class="agent-action text-xs text-gray-600 truncate">Waiting</p>
+    </div>
 
-        <!-- Query Section -->
-        <section id="querySection" class="bg-white rounded-lg shadow-md p-6 hidden">
-            <h2 class="text-2xl font-bold mb-4">Ask Questions</h2>
-            <div class="flex gap-4">
-                <input 
-                    type="text" 
-                    id="queryInput" 
-                    placeholder="Ask a question about your documents..." 
-                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                <button id="queryBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold">
-                    Ask
-                </button>
-            </div>
-            <div id="queryResults" class="mt-4"></div>
-        </section>
-    </main>
+    <!-- ProcessorAgent -->
+    <div id="agent-ProcessorAgent" class="agent-card rounded-xl p-4 transition-all duration-300" style="background:#161b22; border:1px solid #21262d">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚙️</span>
+          <div>
+            <p class="text-xs font-semibold text-gray-200">Processor</p>
+            <p class="text-xs text-gray-600">Embeddings</p>
+          </div>
+        </div>
+        <span class="agent-status-badge text-xs px-2 py-0.5 rounded-full" style="background:#6b728020; color:#6b7280">idle</span>
+      </div>
+      <div class="w-full h-1.5 rounded-full mb-2" style="background:#21262d">
+        <div class="agent-progress-bar h-full rounded-full progress-bar" style="width:0%"></div>
+      </div>
+      <p class="agent-action text-xs text-gray-600 truncate">Waiting</p>
+    </div>
+  </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white text-center py-4 mt-12">
-        <p>Google Cloud Rapid Agent Hackathon Project</p>
-        <p class="text-gray-400 text-sm mt-1">Powered by Gemini 2.0 Flash + LangGraph + MongoDB</p>
-    </footer>
+  <!-- Overall progress bar -->
+  <div id="overall-progress-row" class="hidden mt-4 pt-4 border-t border-gray-800">
+    <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+      <span>Overall pipeline</span>
+      <span id="overall-pct">0%</span>
+    </div>
+    <div class="w-full h-2 rounded-full" style="background:#21262d">
+      <div id="overall-bar" class="h-full rounded-full progress-bar" style="width:0%"></div>
+    </div>
+  </div>
+</section>
 
-    <script src="app.js"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     RESULTS PANEL
+════════════════════════════════════════════════════════════════ -->
+<section id="results-section" class="card p-6 hidden">
+  <div class="flex items-center gap-2 mb-4">
+    <div class="w-2 h-2 rounded-full" style="background:#00ED64"></div>
+    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Processed Documents</h2>
+    <span id="results-count" class="text-xs px-2 py-0.5 rounded-full ml-1" style="background:#00ED6420; color:#00ED64">0</span>
+  </div>
+  <div id="completion-banner" class="hidden mb-4 p-3 rounded-lg text-sm font-medium" style="background:#00ED6415; border:1px solid #00ED6430; color:#00ED64"></div>
+  <div id="results-list" class="space-y-3"></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     CHAT INTERFACE
+════════════════════════════════════════════════════════════════ -->
+<section class="card p-6">
+  <div class="flex items-center gap-2 mb-4">
+    <div class="w-2 h-2 rounded-full" style="background:#00ED64"></div>
+    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Ask Questions</h2>
+    <span class="text-xs text-gray-600 ml-1">QueryAgent · Agentic RAG</span>
+  </div>
+
+  <!-- Chat history -->
+  <div id="chat-history"
+    class="scrollbar overflow-y-auto space-y-4 mb-4"
+    style="min-height:120px; max-height:400px">
+    <div class="flex justify-center">
+      <p class="text-xs text-gray-600 px-4 py-2 rounded-full" style="background:#161b22; border:1px solid #21262d">
+        Process documents first, then ask questions about them
+      </p>
+    </div>
+  </div>
+
+  <!-- Query input -->
+  <div class="flex gap-3">
+    <input id="query-input"
+      type="text"
+      placeholder="Ask a question about your processed documents…"
+      class="flex-1 px-4 py-2.5 rounded-lg text-sm text-gray-200 focus:outline-none focus:ring-1"
+      style="background:#0d1117; border:1px solid #30363d; --tw-ring-color:#00ED64" />
+    <button id="query-btn"
+      class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 focus:outline-none"
+      style="background:#00ED6420; border:1px solid #00ED6440; color:#00ED64">
+      Ask
+    </button>
+  </div>
+</section>
+
+</main>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-6 right-6 space-y-2 z-50"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════════ -->
+<script>
+// ── Config ────────────────────────────────────────────────────────
+const API  = 'http://localhost:8000';
+const WS   = 'ws://localhost:8000';
+
+// ── Session ID (UUID v4) ─────────────────────────────────────────
+const SESSION_ID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+  const r = Math.random() * 16 | 0;
+  return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+});
+
+// ── State ────────────────────────────────────────────────────────
+let ws          = null;
+let recognition = null;
+let recording   = false;
+let currentJobId = null;
+let jobPollTimer = null;
+
+// ── Status helpers ────────────────────────────────────────────────
+const STATUS_CFG = {
+  idle:    { bg: '#6b728020', color: '#6b7280', label: 'idle' },
+  pending: { bg: '#6b728020', color: '#6b7280', label: 'pending' },
+  started: { bg: '#f59e0b20', color: '#f59e0b', label: 'started' },
+  running: { bg: '#f59e0b20', color: '#f59e0b', label: 'running' },
+  success: { bg: '#00ED6420', color: '#00ED64', label: 'done' },
+  failure: { bg: '#ef444420', color: '#ef4444', label: 'failed' },
+  retry:   { bg: '#f59e0b20', color: '#f59e0b', label: 'retry' },
+};
+
+// ── Toast ─────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  const colors = { info: '#1f6feb', success: '#00ED64', error: '#ef4444', warn: '#f59e0b' };
+  el.className = 'px-4 py-3 rounded-lg text-sm font-medium shadow-lg animate-slide-in';
+  el.style.cssText = `background:#161b22; border:1px solid ${colors[type]}40; color:${colors[type]}; max-width:320px`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── WebSocket ────────────────────────────────────────────────────
+function connectWS() {
+  ws = new WebSocket(`${WS}/ws/${SESSION_ID}`);
+
+  ws.onopen = () => {
+    setWsStatus(true);
+  };
+
+  ws.onmessage = (e) => {
+    try { handleWsMessage(JSON.parse(e.data)); }
+    catch {}
+  };
+
+  ws.onerror = () => setWsStatus(false);
+
+  ws.onclose = () => {
+    setWsStatus(false);
+    setTimeout(connectWS, 3000);
+  };
+}
+
+function setWsStatus(connected) {
+  const dot   = document.getElementById('ws-dot');
+  const label = document.getElementById('ws-label');
+  const wrap  = document.getElementById('ws-status');
+  if (connected) {
+    dot.style.background   = '#00ED64';
+    dot.className          = 'w-2 h-2 rounded-full animate-pulse';
+    label.textContent      = 'Live';
+    label.style.color      = '#00ED64';
+    wrap.style.borderColor = '#00ED6440';
+  } else {
+    dot.style.background   = '#6b7280';
+    dot.className          = 'w-2 h-2 rounded-full';
+    label.textContent      = 'Disconnected';
+    label.style.color      = '#6b7280';
+    wrap.style.borderColor = '#30363d';
+  }
+}
+
+function handleWsMessage(msg) {
+  if (msg.type === 'connected') return;
+  if (msg.type === 'pong')      return;
+  if (msg.type === 'progress')  updateAgentCards(msg);
+  if (msg.type === 'complete')  handleCompletion(msg);
+  if (msg.type === 'error')     toast(msg.message, 'error');
+}
+
+// ── Agent cards ───────────────────────────────────────────────────
+function updateAgentCards(state) {
+  // Show overall bar
+  const overallRow = document.getElementById('overall-progress-row');
+  overallRow.classList.remove('hidden');
+  const pct = state.progress ?? 0;
+  document.getElementById('overall-bar').style.width   = pct + '%';
+  document.getElementById('overall-pct').textContent   = pct + '%';
+
+  // Show job id
+  if (state.job_id) {
+    const lbl = document.getElementById('job-id-label');
+    lbl.textContent = 'job: ' + state.job_id.slice(0, 8) + '…';
+    lbl.classList.remove('hidden');
+  }
+
+  // Per-agent update
+  const agents = state.agents ?? {};
+  for (const [name, info] of Object.entries(agents)) {
+    setAgentCard(name, info.status, info.progress ?? 0, info.result);
+  }
+
+  // Also reflect supervisor state
+  setAgentCard('SupervisorAgent', state.status, pct);
+}
+
+function setAgentCard(agentName, status, progress, result) {
+  const card = document.getElementById('agent-' + agentName);
+  if (!card) return;
+
+  const cfg    = STATUS_CFG[status] ?? STATUS_CFG.idle;
+  const badge  = card.querySelector('.agent-status-badge');
+  const bar    = card.querySelector('.agent-progress-bar');
+  const action = card.querySelector('.agent-action');
+
+  badge.style.background = cfg.bg;
+  badge.style.color      = cfg.color;
+  badge.textContent      = cfg.label;
+  bar.style.width        = Math.min(progress, 100) + '%';
+
+  // Action text
+  const actionTexts = {
+    pending: 'Queued…',
+    started: 'Starting up…',
+    running: `Processing… ${progress}%`,
+    success: result ? `Done — ${result.urls_found ?? result.docs_processed ?? result.extracted ?? result.total_chunks ?? '✓'}` : 'Completed ✓',
+    failure: 'Failed ✗',
+    retry:   'Retrying…',
+  };
+  action.textContent = actionTexts[status] ?? 'Waiting';
+  action.style.color = cfg.color;
+
+  // Active card glow
+  if (status === 'running' || status === 'started') {
+    card.classList.add('agent-pulse');
+    card.style.borderColor = '#00ED6440';
+  } else {
+    card.classList.remove('agent-pulse');
+    card.style.borderColor = status === 'success' ? '#00ED6430' :
+                             status === 'failure'  ? '#ef444430' : '#21262d';
+  }
+}
+
+// ── Completion ────────────────────────────────────────────────────
+function handleCompletion(msg) {
+  clearInterval(jobPollTimer);
+
+  // Banner
+  const section = document.getElementById('results-section');
+  section.classList.remove('hidden');
+  const banner = document.getElementById('completion-banner');
+  banner.textContent = msg.message ?? 'Pipeline complete!';
+  banner.classList.remove('hidden');
+
+  toast(msg.message ?? 'Done!', 'success');
+
+  // Update supervisor card to success
+  setAgentCard('SupervisorAgent', 'success', 100);
+
+  // Fetch job status to show document list
+  if (msg.job_id) fetchAndRenderResults(msg.job_id);
+}
+
+async function fetchAndRenderResults(jobId) {
+  try {
+    const r = await fetch(`${API}/api/job/${jobId}`);
+    if (!r.ok) return;
+    const data = await r.json();
+
+    // Render per-agent results
+    const list = document.getElementById('results-list');
+    list.innerHTML = '';
+    let docCount = 0;
+    for (const [agentName, info] of Object.entries(data.agents ?? {})) {
+      const res = info.result ?? {};
+      if (agentName === 'ScannerAgent' && res.urls_found) {
+        docCount = res.urls_found;
+      }
+    }
+    document.getElementById('results-count').textContent = docCount;
+
+    // Render a summary card
+    const summary = document.createElement('div');
+    summary.className = 'p-4 rounded-xl text-sm animate-slide-in';
+    summary.style.cssText = 'background:#0d1117; border:1px solid #21262d';
+    summary.innerHTML = `
+      <p class="font-semibold text-gray-200 mb-2">${data.query ?? 'Research pipeline completed'}</p>
+      <div class="flex flex-wrap gap-3 text-xs">
+        ${buildStatChip('📥 URLs found', data.agents?.ScannerAgent?.result?.urls_found ?? '–')}
+        ${buildStatChip('✅ Evaluated', data.agents?.EvaluatorAgent?.result?.accepted ?? '–')}
+        ${buildStatChip('📄 Extracted', data.agents?.ExtractorAgent?.result?.extracted ?? '–')}
+        ${buildStatChip('🧩 Chunks', data.agents?.ProcessorAgent?.result?.total_chunks ?? '–')}
+      </div>`;
+    list.appendChild(summary);
+  } catch {}
+}
+
+function buildStatChip(label, val) {
+  return `<span class="px-2.5 py-1 rounded-full" style="background:#00ED6415; border:1px solid #00ED6430; color:#00ED64">${label}: <strong>${val}</strong></span>`;
+}
+
+// ── Job polling (fallback when WS misses events) ──────────────────
+function startJobPoll(jobId) {
+  clearInterval(jobPollTimer);
+  jobPollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/api/job/${jobId}`);
+      if (!r.ok) return;
+      const data = await r.json();
+      updateAgentCards(data);
+      if (data.status === 'success' || data.status === 'failure') {
+        clearInterval(jobPollTimer);
+        if (data.status === 'success') {
+          handleCompletion({ message: 'Pipeline complete!', job_id: jobId });
+        }
+      }
+    } catch {}
+  }, 3000);
+}
+
+// ── Submit query ──────────────────────────────────────────────────
+async function submitQuery(text) {
+  if (!text?.trim()) { toast('Please enter a query', 'warn'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Processing…';
+  btn.disabled    = true;
+  btn.style.opacity = '0.7';
+
+  // Reset agent cards
+  for (const name of ['SupervisorAgent','ScannerAgent','EvaluatorAgent','ExtractorAgent','ProcessorAgent']) {
+    setAgentCard(name, 'pending', 0);
+  }
+  document.getElementById('overall-progress-row').classList.remove('hidden');
+  document.getElementById('results-section').classList.add('hidden');
+
+  try {
+    const r = await fetch(`${API}/api/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: text, session_id: SESSION_ID }),
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail ?? 'Server error');
+    }
+
+    const data = await r.json();
+    currentJobId = data.job_id;
+
+    // Update supervisor card immediately
+    setAgentCard('SupervisorAgent', 'success', 100);
+    document.getElementById('job-id-label').textContent = 'job: ' + data.job_id.slice(0, 8) + '…';
+    document.getElementById('job-id-label').classList.remove('hidden');
+
+    // Show plan details
+    const plan = data.plan ?? {};
+    toast(`🧠 Plan: ${plan.complexity ?? '?'} complexity · ${plan.search_queries?.length ?? 0} search queries`, 'info');
+
+    startJobPoll(data.job_id);
+
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  } finally {
+    btn.textContent = 'Process';
+    btn.disabled    = false;
+    btn.style.opacity = '1';
+    // Clear input
+    document.getElementById('text-input').value = '';
+    document.getElementById('final-text').textContent = '';
+    document.getElementById('interim-text').textContent = '';
+  }
+}
+
+// ── Voice / Speech API ────────────────────────────────────────────
+function initSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('mic-hint').textContent = 'Speech not supported in this browser';
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.continuous      = false;
+  recognition.interimResults  = true;
+  recognition.lang            = 'en-US';
+
+  recognition.onstart = () => {
+    recording = true;
+    const btn = document.getElementById('mic-btn');
+    btn.style.background  = '#ef444420';
+    btn.style.borderColor = '#ef4444';
+    btn.classList.add('mic-pulse');
+    document.getElementById('mic-hint').textContent = '🔴 Listening…';
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      e.results[i].isFinal ? (final += t) : (interim += t);
+    }
+    document.getElementById('interim-text').textContent = interim;
+    if (final) {
+      document.getElementById('final-text').textContent  = final;
+      document.getElementById('text-input').value        = final;
+    }
+  };
+
+  recognition.onend = () => {
+    recording = false;
+    const btn = document.getElementById('mic-btn');
+    btn.style.background  = '#00ED6415';
+    btn.style.borderColor = '#00ED6440';
+    btn.classList.remove('mic-pulse');
+    document.getElementById('mic-hint').textContent = 'Click to start speaking';
+    document.getElementById('interim-text').textContent = '';
+
+    const finalText = document.getElementById('final-text').textContent.trim();
+    if (finalText) submitQuery(finalText);
+  };
+
+  recognition.onerror = (e) => {
+    toast('Speech error: ' + e.error, 'warn');
+    recognition.onend();
+  };
+}
+
+// ── Chat / Query ──────────────────────────────────────────────────
+function appendChatBubble(role, content, sources = []) {
+  const history = document.getElementById('chat-history');
+  const wrap    = document.createElement('div');
+  wrap.className = 'animate-slide-in';
+
+  if (role === 'user') {
+    wrap.innerHTML = `
+      <div class="flex justify-end">
+        <div class="chat-bubble-user px-4 py-2.5 max-w-[80%] text-sm text-white">${escHtml(content)}</div>
+      </div>`;
+  } else {
+    const sourceHtml = sources.length
+      ? `<div class="mt-2 flex flex-wrap gap-1.5">
+           ${sources.slice(0,5).map(s =>
+             `<a href="${escHtml(s.source_url)}" target="_blank"
+                class="source-chip text-xs px-2 py-0.5 rounded-full no-underline truncate max-w-[180px]"
+                title="${escHtml(s.source_url)}">${escHtml(s.title || s.source_url.split('/').pop() || 'Source')}</a>`
+           ).join('')}
+         </div>` : '';
+    wrap.innerHTML = `
+      <div class="flex justify-start">
+        <div class="chat-bubble-ai px-4 py-3 max-w-[85%] text-sm text-gray-200 leading-relaxed">
+          ${escHtml(content)}${sourceHtml}
+        </div>
+      </div>`;
+  }
+  history.appendChild(wrap);
+  history.scrollTop = history.scrollHeight;
+}
+
+function appendTypingIndicator() {
+  const id = 'typing-' + Date.now();
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'flex justify-start animate-fade-in';
+  el.innerHTML = `
+    <div class="chat-bubble-ai px-4 py-3 text-sm text-gray-500 flex items-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style="animation-delay:0ms"></span>
+      <span class="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style="animation-delay:150ms"></span>
+      <span class="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style="animation-delay:300ms"></span>
+    </div>`;
+  document.getElementById('chat-history').appendChild(el);
+  document.getElementById('chat-history').scrollTop = 9999;
+  return id;
+}
+
+async function sendQuery() {
+  const input   = document.getElementById('query-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  appendChatBubble('user', question);
+  const typingId = appendTypingIndicator();
+  document.getElementById('query-btn').disabled = true;
+
+  try {
+    const r = await fetch(`${API}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, session_id: SESSION_ID }),
+    });
+    document.getElementById(typingId)?.remove();
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      appendChatBubble('ai', '⚠️ ' + (err.detail ?? 'Server error'), []);
+      return;
+    }
+
+    const data = await r.json();
+    appendChatBubble('ai', data.answer, data.sources ?? []);
+
+    // Confidence indicator
+    if (data.confidence < 0.5) {
+      toast(`Low confidence answer (${Math.round(data.confidence*100)}%) — try processing more documents`, 'warn');
+    }
+  } catch (e) {
+    document.getElementById(typingId)?.remove();
+    appendChatBubble('ai', '⚠️ Connection error: ' + e.message, []);
+  } finally {
+    document.getElementById('query-btn').disabled = false;
+  }
+}
+
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Event listeners ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  connectWS();
+  initSpeech();
+
+  // Mic button
+  document.getElementById('mic-btn').addEventListener('click', () => {
+    if (!recognition) { toast('Speech not supported', 'warn'); return; }
+    if (recording) recognition.stop();
+    else recognition.start();
+  });
+
+  // Submit button
+  document.getElementById('submit-btn').addEventListener('click', () => {
+    const text = document.getElementById('text-input').value.trim()
+               || document.getElementById('final-text').textContent.trim();
+    submitQuery(text);
+  });
+
+  // Enter key on text input
+  document.getElementById('text-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      submitQuery(e.target.value.trim());
+    }
+  });
+
+  // Query button
+  document.getElementById('query-btn').addEventListener('click', sendQuery);
+  document.getElementById('query-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendQuery();
+  });
+
+  // Keep WS alive
+  setInterval(() => {
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
+  }, 20000);
+});
+</script>
 </body>
 </html>

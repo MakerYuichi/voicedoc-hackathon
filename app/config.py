@@ -9,13 +9,25 @@ from typing import List
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
-    # Google Cloud & Gemini
+    # Google Cloud & Gemini  (production LLM)
     google_api_key: str = Field(..., alias="GOOGLE_API_KEY")
     google_cloud_project: str = Field(default="", alias="GOOGLE_CLOUD_PROJECT")
     google_application_credentials: str = Field(default="", alias="GOOGLE_APPLICATION_CREDENTIALS")
-    gemini_model: str = Field(default="gemini-1.5-flash-8b", alias="GEMINI_MODEL")
+    gemini_model: str = Field(default="gemini-2.0-flash", alias="GEMINI_MODEL")
     temperature: float = Field(default=0.7, alias="TEMPERATURE")
     max_tokens: int = Field(default=2048, alias="MAX_TOKENS")
+
+    # Groq  (dev/test fallback — optional)
+    # Set GROQ_API_KEY in .env to enable. Leave blank to use Gemini.
+    groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+    groq_model: str = Field(
+        default="llama-3.1-8b-instant",
+        alias="GROQ_MODEL",
+    )
+    groq_base_url: str = Field(
+        default="https://api.groq.com/openai/v1",
+        alias="GROQ_BASE_URL",
+    )
     
     # MongoDB Atlas
     mongodb_uri: str = Field(..., alias="MONGODB_URI")
@@ -62,17 +74,18 @@ class Settings(BaseSettings):
     
     # Agent Settings
     max_parallel_workers: int = Field(default=4, alias="MAX_PARALLEL_WORKERS")
-    document_chunk_size: int = Field(default=1000, alias="DOCUMENT_CHUNK_SIZE")
-    document_chunk_overlap: int = Field(default=200, alias="DOCUMENT_CHUNK_OVERLAP")
+    document_chunk_size: int = Field(default=512, alias="DOCUMENT_CHUNK_SIZE")
+    document_chunk_overlap: int = Field(default=50, alias="DOCUMENT_CHUNK_OVERLAP")
+    # text-embedding-004 via GoogleGenerativeAIEmbeddings
     embedding_model: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2",
-        alias="EMBEDDING_MODEL"
+        default="models/gemini-embedding-001",
+        alias="EMBEDDING_MODEL",
     )
-    
+
     # Vector Search
     vector_index_name: str = Field(default="vector_index", alias="VECTOR_INDEX_NAME")
-    # 1536 = Google text-embedding-004 output size
-    vector_dimensions: int = Field(default=1536, alias="VECTOR_DIMENSIONS")
+    # gemini-embedding-001 outputs 3072-dim vectors
+    vector_dimensions: int = Field(default=3072, alias="VECTOR_DIMENSIONS")
     similarity_threshold: float = Field(default=0.7, alias="SIMILARITY_THRESHOLD")
     top_k_results: int = Field(default=5, alias="TOP_K_RESULTS")
     

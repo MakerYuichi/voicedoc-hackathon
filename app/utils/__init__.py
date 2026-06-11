@@ -15,6 +15,7 @@ from app.utils.job_manager import (
     mark_job_complete_sync,
     redis_health_check,
 )
+from app.utils.llm import get_llm, get_llm_sync, active_provider, llm_health_check
 
 __all__ = [
     "ws_manager",
@@ -30,4 +31,8 @@ __all__ = [
     "mark_job_complete",
     "mark_job_complete_sync",
     "redis_health_check",
+    "get_llm",
+    "get_llm_sync",
+    "active_provider",
+    "llm_health_check",
 ]
